@@ -1,6 +1,5 @@
 package com.pollify.pollify.controller;
 
-
 import com.pollify.pollify.dto.AuthRequest;
 import com.pollify.pollify.dto.AuthResponse;
 import com.pollify.pollify.dto.RegisterRequest;
@@ -9,16 +8,12 @@ import com.pollify.pollify.servis.UserService;
 import com.pollify.pollify.util.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Optional;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/pollify/auth")
 public class AuthController {
+
     private final UserService userService;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
@@ -32,22 +27,22 @@ public class AuthController {
     // ✅ Login endpoint
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
-        Optional<User> userOpt = userService.findByEmail(request.getEmail());
+        User user = userService.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Geçersiz e-posta adresi"));
 
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                String token = jwtUtil.generateToken(user);
-                return ResponseEntity.ok(new AuthResponse(token));
-            }
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Geçersiz şifre");
         }
 
-        return ResponseEntity.status(401).build();
+        String token = jwtUtil.generateToken(user);
+        return ResponseEntity.ok(new AuthResponse(token));
     }
+
+    // ✅ Register endpoint
     @PostMapping("/register")
     public ResponseEntity<User> register(@RequestBody RegisterRequest request) {
         if (userService.existsByEmail(request.getEmail())) {
-            return ResponseEntity.badRequest().build();
+            throw new RuntimeException("Bu e-posta zaten kayıtlı");
         }
 
         User user = User.builder()

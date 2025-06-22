@@ -77,8 +77,7 @@ public class AccessLogAspect {
                 .errorMessage(errorMessage)
                 .build();
 
-        accessLogService.deleteLogsBefore(LocalDateTime.now().minusWeeks(1));
-        accessLogService.saveLog(log);
+        accessLogService.saveLog(log); // ❗ Eski kayıtları silmiyoruz artık
     }
 
     private String extractEntityName(JoinPoint joinPoint) {

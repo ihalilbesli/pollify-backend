@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/pollify/options")
@@ -23,60 +22,58 @@ public class OptionController {
         this.questionService = questionService;
     }
 
+    // ✅ Belirli bir soruya ait seçenekleri getir
     @GetMapping("/by-question/{questionId}")
     public ResponseEntity<List<Option>> getByQuestion(@PathVariable Long questionId) {
-        return questionService.findById(questionId)
-                .map(question -> ResponseEntity.ok(optionService.findByQuestion(question)))
-                .orElse(ResponseEntity.notFound().build());
+        Question question = questionService.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Soru bulunamadı (id: " + questionId + ")"));
+        return ResponseEntity.ok(optionService.findByQuestion(question));
     }
 
+    // ✅ Tek bir seçenek ekle
     @PostMapping
     public ResponseEntity<Option> createOption(@RequestBody Map<String, Object> payload) {
         String text = (String) payload.get("text");
         Integer voteCountInt = payload.get("voteCount") != null ? (Integer) payload.get("voteCount") : 0;
-        Integer questionIdInt = (Integer) payload.get("questionId"); // JSON'da questionId olarak gelmeli
+        Integer questionIdInt = (Integer) payload.get("questionId");
 
         if (text == null || questionIdInt == null) {
-            return ResponseEntity.badRequest().build();
+            throw new RuntimeException("Eksik veri: text veya questionId null olamaz.");
         }
 
         Long questionId = questionIdInt.longValue();
-
-        Optional<Question> questionOpt = questionService.findById(questionId);
-        if (questionOpt.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+        Question question = questionService.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Soru bulunamadı (id: " + questionId + ")"));
 
         Option option = new Option();
         option.setText(text);
         option.setVoteCount(voteCountInt);
-        option.setQuestion(questionOpt.get());
+        option.setQuestion(question);
 
         Option saved = optionService.save(option);
         return ResponseEntity.ok(saved);
     }
 
+    // ✅ Toplu seçenek ekleme
     @PostMapping("/batch")
     public ResponseEntity<List<Option>> createOptions(@RequestBody List<Option> options) {
-        System.out.println("createOptions batch çağrıldı. Gelen seçenekler sayısı: " + options.size());
+        if (options == null || options.isEmpty()) {
+            throw new RuntimeException("Seçenek listesi boş olamaz.");
+        }
 
         for (Option option : options) {
-            System.out.println("Seçenek kontrol ediliyor: " + option);
             if (option.getQuestion() == null || option.getQuestion().getId() == null) {
-                System.out.println("Hata: option.getQuestion veya option.getQuestion().getId() null");
-                return ResponseEntity.badRequest().build(); // question bilgisi yoksa iptal et
+                throw new RuntimeException("Her seçeneğin geçerli bir question ID’si olmalıdır.");
             }
-            var questionOpt = questionService.findById(option.getQuestion().getId());
-            if (questionOpt.isPresent()) {
-                option.setQuestion(questionOpt.get());
-                System.out.println("Question set edildi: " + questionOpt.get());
-            } else {
-                System.out.println("Hata: Geçersiz question id: " + option.getQuestion().getId());
-                return ResponseEntity.badRequest().build(); // geçersiz question id
-            }
+
+            Long questionId = option.getQuestion().getId();
+            Question question = questionService.findById(questionId)
+                    .orElseThrow(() -> new RuntimeException("Soru bulunamadı (id: " + questionId + ")"));
+
+            option.setQuestion(question);
         }
+
         List<Option> savedOptions = optionService.saveAll(options);
-        System.out.println("Seçenekler kaydedildi. Sayı: " + savedOptions.size());
         return ResponseEntity.ok(savedOptions);
     }
 }

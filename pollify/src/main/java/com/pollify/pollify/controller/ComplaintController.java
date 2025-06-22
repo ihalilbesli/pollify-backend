@@ -1,7 +1,6 @@
 package com.pollify.pollify.controller;
 
 import com.pollify.pollify.model.Complaint;
-import com.pollify.pollify.model.Complaint.ComplaintStatus;
 import com.pollify.pollify.model.User;
 import com.pollify.pollify.repository.UserRepository;
 import com.pollify.pollify.servis.ComplaintService;
@@ -10,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/pollify/complaints")
@@ -28,14 +26,22 @@ public class ComplaintController {
     @PostMapping
     public ResponseEntity<Complaint> createComplaint(@RequestBody Complaint complaint) {
         Long userId = SecurityUtil.getCurrentUserId();
-        userRepository.findById(userId).ifPresent(complaint::setUser);
-        return ResponseEntity.ok(complaintService.save(complaint));
+        if (userId == null) throw new RuntimeException("Giriş yapılmamış");
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
+
+        complaint.setUser(user);
+        Complaint saved = complaintService.save(complaint);
+        return ResponseEntity.ok(saved);
     }
 
     // ✅ 2. Kullanıcı kendi şikayetlerini listeler
     @GetMapping("/my")
     public ResponseEntity<List<Complaint>> getMyComplaints() {
         Long userId = SecurityUtil.getCurrentUserId();
+        if (userId == null) throw new RuntimeException("Giriş yapılmamış");
+
         return ResponseEntity.ok(complaintService.findByUserId(userId));
     }
 
@@ -45,19 +51,20 @@ public class ComplaintController {
         return ResponseEntity.ok(complaintService.findAll());
     }
 
-    //  4. Admin şikayeti günceller (status veya adminNot değiştirir)
+    // ✅ 4. Admin şikayeti günceller (status veya adminNote değiştirir)
     @PutMapping("/admin-update/{id}")
     public ResponseEntity<Complaint> updateComplaintByAdmin(
             @PathVariable Long id,
             @RequestBody Complaint updatedData
     ) {
-        return complaintService.findById(id)
-                .map(existing -> {
-                    existing.setStatus(updatedData.getStatus());
-                    existing.setAdminNote(updatedData.getAdminNote());
-                    return ResponseEntity.ok(complaintService.updateComplaint(existing));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        Complaint existing = complaintService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Şikayet bulunamadı (id: " + id + ")"));
+
+        existing.setStatus(updatedData.getStatus());
+        existing.setAdminNote(updatedData.getAdminNote());
+
+        Complaint updated = complaintService.updateComplaint(existing);
+        return ResponseEntity.ok(updated);
     }
 
     // ✅ 5. Kullanıcı kendi şikayetini günceller (subject, description)
@@ -67,28 +74,29 @@ public class ComplaintController {
             @RequestBody Complaint updatedData
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
+        if (userId == null) throw new RuntimeException("Giriş yapılmamış");
 
-        return complaintService.findById(id)
-                .filter(c -> c.getUser().getId().equals(userId))
-                .map(existing -> {
-                    existing.setSubject(updatedData.getSubject());
-                    existing.setDescription(updatedData.getDescription());
-                    return ResponseEntity.ok(complaintService.updateComplaint(existing));
-                })
-                .orElse(ResponseEntity.status(403).build());
+        Complaint existing = complaintService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Şikayet bulunamadı (id: " + id + ")"));
+
+        if (!existing.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Bu şikayet size ait değil.");
+        }
+
+        existing.setSubject(updatedData.getSubject());
+        existing.setDescription(updatedData.getDescription());
+
+        Complaint updated = complaintService.updateComplaint(existing);
+        return ResponseEntity.ok(updated);
     }
 
     // ✅ 6. Şikayet sil (Admin veya kullanıcı)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComplaint(@PathVariable Long id) {
-        Optional<Complaint> optionalComplaint = complaintService.findById(id);
+        Complaint complaint = complaintService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Şikayet bulunamadı (id: " + id + ")"));
 
-        if (optionalComplaint.isPresent()) {
-            complaintService.deleteById(id);
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        complaintService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
-
 }

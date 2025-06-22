@@ -26,6 +26,4 @@ public class Option {
     @ToString.Exclude
     @JsonBackReference // Question içindeki options listesinin back reference tarafı
     private Question question;
-
-
 }

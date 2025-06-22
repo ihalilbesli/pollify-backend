@@ -13,4 +13,7 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, Long> {
     List<AccessLog> findByRole(String role);
     List<AccessLog> findByStatus(String status);
     List<AccessLog> findByTimestampAfter(LocalDateTime after);
+
+    void deleteByTimestampBefore(LocalDateTime time);
+
 }

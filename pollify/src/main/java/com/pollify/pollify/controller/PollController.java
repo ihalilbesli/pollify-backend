@@ -36,66 +36,73 @@ public class PollController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Poll> getById(@PathVariable Long id) {
-        return pollService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Poll poll = pollService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Anket bulunamadı"));
+        return ResponseEntity.ok(poll);
     }
 
     @GetMapping("/by-user/{userId}")
     public ResponseEntity<List<Poll>> getByUser(@PathVariable Long userId) {
-        return userService.findById(userId)
-                .map(user -> ResponseEntity.ok(pollService.findByCreatedBy(user)))
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(
+                pollService.findByCreatedBy(
+                        userService.findById(userId)
+                                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"))
+                )
+        );
     }
 
     @PostMapping
     public ResponseEntity<Poll> createPoll(@RequestBody Poll poll) {
         Long currentUserId = SecurityUtil.getCurrentUserId();
-
         if (currentUserId == null) {
-            return ResponseEntity.status(401).build();
+            throw new RuntimeException("Giriş yapılmamış.");
         }
 
-        return userService.findById(currentUserId)
-                .map(user -> {
-                    poll.setCreatedBy(user);
-                    poll.setActive(true);
+        var user = userService.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
 
-                    // İlişkileri elle kur
-                    if (poll.getQuestions() != null) {
-                        for (Question question : poll.getQuestions()) {
-                            question.setPoll(poll);
-                            // Eğer Question içindeki options varsa, onlar için de set et
-                            if (question.getOptions() != null) {
-                                for (Option option : question.getOptions()) {
-                                    option.setQuestion(question);
-                                }
-                            }
-                        }
+        poll.setCreatedBy(user);
+        poll.setActive(true);
+
+        // İlişkileri elle kur
+        if (poll.getQuestions() != null) {
+            for (Question question : poll.getQuestions()) {
+                question.setPoll(poll);
+                if (question.getOptions() != null) {
+                    for (Option option : question.getOptions()) {
+                        option.setQuestion(question);
                     }
+                }
+            }
+        }
 
-                    Poll saved = pollService.save(poll);
-                    return ResponseEntity.ok(saved);
-                })
-                .orElseGet(() -> ResponseEntity.badRequest().build());
+        Poll saved = pollService.save(poll);
+        return ResponseEntity.ok(saved);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePoll(@PathVariable Long id) {
+        // Eğer yoksa hata fırlat
+        pollService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Silinecek anket bulunamadı"));
         pollService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Poll> updatePoll(@PathVariable Long id, @RequestBody Poll updatedPoll) {
-        return pollService.updatePoll(id, updatedPoll)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(
+                pollService.updatePoll(id, updatedPoll)
+                        .orElseThrow(() -> new RuntimeException("Anket güncellenemedi"))
+        );
     }
 
     @GetMapping("/results/{pollId}")
     public ResponseEntity<PollResultDTO> getPollResults(@PathVariable Long pollId) {
-        return ResponseEntity.ok(pollService.getPollResults(pollId));
+        PollResultDTO result = pollService.getPollResults(pollId);
+        if (result == null) {
+            throw new RuntimeException("Anket sonucu bulunamadı");
+        }
+        return ResponseEntity.ok(result);
     }
-
 }

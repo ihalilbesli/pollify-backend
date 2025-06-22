@@ -32,7 +32,7 @@ public class VoteController {
         this.userService = userService;
     }
 
-
+    // ✅ Oy kullanma işlemi
     @PostMapping
     public ResponseEntity<?> vote(@RequestBody VoteRequest[] requestsArray, HttpServletRequest request) {
         List<VoteRequest> requests = Arrays.asList(requestsArray);
@@ -41,45 +41,41 @@ public class VoteController {
 
         User user = null;
         if (currentUserId != null) {
-            user = userService.findById(currentUserId).orElse(null);
-            if (user == null) {
-                return ResponseEntity.badRequest().body(Map.of("ok", false, "error", "Kullanıcı bulunamadı."));
-            }
+            user = userService.findById(currentUserId)
+                    .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
         }
 
         for (VoteRequest voteReq : requests) {
-            Optional<Option> optionOpt = optionService.findById(voteReq.getOptionId());
-            Optional<Question> questionOpt = questionService.findById(voteReq.getQuestionId());
-            Optional<Poll> pollOpt = pollService.findById(voteReq.getPollId());
+            Option option = optionService.findById(voteReq.getOptionId())
+                    .orElseThrow(() -> new RuntimeException("Seçenek bulunamadı"));
 
-            if (optionOpt.isEmpty() || questionOpt.isEmpty() || pollOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("ok", false, "error", "Geçersiz oy verisi."));
-            }
+            Question question = questionService.findById(voteReq.getQuestionId())
+                    .orElseThrow(() -> new RuntimeException("Soru bulunamadı"));
 
-            Question question = questionOpt.get();
+            Poll poll = pollService.findById(voteReq.getPollId())
+                    .orElseThrow(() -> new RuntimeException("Anket bulunamadı"));
 
-            // Sadece SINGLE_CHOICE için kullanıcı/İP kontrolü yapılır
+            // SINGLE_CHOICE için kontrol
             if (question.getType() == Question.QuestionType.SINGLE_CHOICE) {
                 if (user != null && voteService.findByVotedByAndQuestion(user, question).isPresent()) {
-                    return ResponseEntity.status(409).body(Map.of("ok", false, "error", "Bu kullanıcı bu soruya zaten oy verdi."));
+                    throw new RuntimeException("Bu kullanıcı bu soruya zaten oy verdi.");
                 }
 
                 if (user == null && voteService.hasVotedByIp(ipAddress, question)) {
-                    return ResponseEntity.status(409).body(Map.of("ok", false, "error", "Bu IP adresi bu soruya zaten oy verdi."));
+                    throw new RuntimeException("Bu IP adresi bu soruya zaten oy verdi.");
                 }
             }
 
             Vote vote = Vote.builder()
-                    .poll(pollOpt.get())
+                    .poll(poll)
                     .question(question)
-                    .option(optionOpt.get())
+                    .option(option)
                     .votedBy(user)
                     .ipAddress(user == null ? ipAddress : null)
                     .build();
 
             voteService.save(vote);
 
-            Option option = optionOpt.get();
             option.setVoteCount(option.getVoteCount() + 1);
             optionService.save(option);
         }
@@ -87,43 +83,39 @@ public class VoteController {
         return ResponseEntity.ok(Map.of("ok", true, "message", "Oylar başarıyla kaydedildi."));
     }
 
-    //  Kullanıcının bu ankete oy verip vermediğini kontrol et
+    // ✅ Kullanıcının bu ankete oy verip vermediğini kontrol et
     @GetMapping("/has-voted/{pollId}")
     public ResponseEntity<?> hasUserVoted(@PathVariable Long pollId, HttpServletRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();
 
         if (userId != null) {
-            Optional<User> userOpt = userService.findById(userId);
-            Optional<Poll> pollOpt = pollService.findById(pollId);
+            User user = userService.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
 
-            if (userOpt.isEmpty() || pollOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body("Geçersiz kullanıcı veya anket");
-            }
+            Poll poll = pollService.findById(pollId)
+                    .orElseThrow(() -> new RuntimeException("Anket bulunamadı"));
 
-            boolean voted = voteService.hasUserVotedInPoll(userOpt.get(), pollOpt.get());
+            boolean voted = voteService.hasUserVotedInPoll(user, poll);
             return ResponseEntity.ok(Map.of("hasVoted", voted));
         }
 
-        // Giriş yapılmamışsa IP kontrolü
         String ip = request.getRemoteAddr();
         boolean votedByIp = voteService.hasIpVotedInPoll(ip, pollId);
         return ResponseEntity.ok(Map.of("hasVoted", votedByIp));
     }
 
-    //  Giriş yapan kullanıcının katıldığı anketleri getir
+    // ✅ Giriş yapan kullanıcının katıldığı anketleri getir
     @GetMapping("/joined-polls")
     public ResponseEntity<?> getJoinedPolls() {
         Long userId = SecurityUtil.getCurrentUserId();
         if (userId == null) {
-            return ResponseEntity.status(401).body("Token gerekli");
+            throw new RuntimeException("Token gerekli");
         }
 
-        Optional<User> userOpt = userService.findById(userId);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(404).body("Kullanıcı bulunamadı");
-        }
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
 
-        List<Poll> joinedPolls = voteService.getPollsVotedByUser(userOpt.get());
+        List<Poll> joinedPolls = voteService.getPollsVotedByUser(user);
         return ResponseEntity.ok(joinedPolls);
     }
 }

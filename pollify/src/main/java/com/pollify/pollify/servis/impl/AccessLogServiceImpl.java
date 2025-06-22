@@ -24,9 +24,7 @@ public class AccessLogServiceImpl implements AccessLogService {
 
     @Override
     public void deleteLogsBefore(LocalDateTime before) {
-        List<AccessLog> oldLogs = accessLogRepository.findByTimestampAfter(before.minusYears(100)); // tümünü getir
-        oldLogs.removeIf(log -> log.getTimestamp().isBefore(before));
-        accessLogRepository.deleteAll(oldLogs);
+        accessLogRepository.deleteByTimestampBefore(before);
     }
 
     @Override

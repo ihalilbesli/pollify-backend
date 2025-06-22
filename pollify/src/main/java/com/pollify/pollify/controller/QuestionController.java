@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/pollify/questions")
@@ -26,9 +25,9 @@ public class QuestionController {
     // ✅ Belirli bir ankete ait tüm soruları getir
     @GetMapping("/by-poll/{pollId}")
     public ResponseEntity<List<Question>> getByPoll(@PathVariable Long pollId) {
-        return pollService.findById(pollId)
-                .map(poll -> ResponseEntity.ok(questionService.findByPoll(poll)))
-                .orElse(ResponseEntity.notFound().build());
+        Poll poll = pollService.findById(pollId)
+                .orElseThrow(() -> new RuntimeException("Anket bulunamadı"));
+        return ResponseEntity.ok(questionService.findByPoll(poll));
     }
 
     // ✅ Tek bir soru ekle
@@ -39,7 +38,7 @@ public class QuestionController {
         Integer pollIdInt = (Integer) payload.get("pollId");
 
         if (pollIdInt == null || text == null || typeStr == null) {
-            return ResponseEntity.badRequest().build();
+            throw new RuntimeException("Eksik veri: text, type veya pollId null olamaz.");
         }
 
         Long pollId = pollIdInt.longValue();
@@ -47,57 +46,57 @@ public class QuestionController {
         try {
             type = Question.QuestionType.valueOf(typeStr);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            throw new RuntimeException("Geçersiz soru tipi: " + typeStr);
         }
 
-        Optional<Poll> pollOpt = pollService.findById(pollId);
-        if (pollOpt.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+        Poll poll = pollService.findById(pollId)
+                .orElseThrow(() -> new RuntimeException("Anket bulunamadı (id: " + pollId + ")"));
 
         Question question = new Question();
         question.setText(text);
         question.setType(type);
-        question.setPoll(pollOpt.get());
+        question.setPoll(poll);
 
         Question saved = questionService.save(question);
         return ResponseEntity.ok(saved);
     }
-
 
     // ✅ Toplu soru ekle (her biri için poll ID gerekir)
     @PostMapping("/batch")
     public ResponseEntity<List<Question>> createQuestions(@RequestBody List<Question> questions) {
         for (Question q : questions) {
             if (q.getPoll() == null || q.getPoll().getId() == null) {
-                return ResponseEntity.badRequest().build(); // Hatalı veri varsa tüm işlem iptal
+                throw new RuntimeException("Her sorunun geçerli bir poll ID’si olmalıdır.");
             }
 
-            Optional.ofNullable(pollService.findById(q.getPoll().getId()))
-                    .flatMap(p -> p)
-                    .ifPresent(q::setPoll);
+            Poll poll = pollService.findById(q.getPoll().getId())
+                    .orElseThrow(() -> new RuntimeException("Anket bulunamadı (id: " + q.getPoll().getId() + ")"));
+
+            q.setPoll(poll);
         }
 
         return ResponseEntity.ok(questionService.saveAll(questions));
     }
+
+    // ✅ Soru güncelle
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateQuestion(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
-        Optional<Question> questionOpt = questionService.findById(id);
-        if (questionOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        Question question = questionOpt.get();
+    public ResponseEntity<Question> updateQuestion(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
+        Question question = questionService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Soru bulunamadı (id: " + id + ")"));
 
         String text = (String) payload.get("text");
         String typeStr = (String) payload.get("type");
-        if (text != null) question.setText(text);
+
+        if (text != null) {
+            question.setText(text);
+        }
 
         if (typeStr != null) {
             try {
                 Question.QuestionType type = Question.QuestionType.valueOf(typeStr);
                 question.setType(type);
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body("Invalid question type");
+                throw new RuntimeException("Geçersiz soru tipi: " + typeStr);
             }
         }
 

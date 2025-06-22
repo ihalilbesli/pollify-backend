@@ -6,29 +6,31 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/pollify/users")
 public class UserController {
+
     private final UserService userService;
 
     public UserController(UserService userService) {
         this.userService = userService;
     }
 
-
+    // ✅ E-posta ile kullanıcı getir
     @GetMapping("/by-email")
     public ResponseEntity<User> getByEmail(@RequestParam String email) {
-        Optional<User> user = userService.findByEmail(email);
-        return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        User user = userService.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Bu e-posta ile eşleşen kullanıcı bulunamadı"));
+        return ResponseEntity.ok(user);
     }
 
+    // ✅ ID ile kullanıcı getir
     @GetMapping("/{id}")
     public ResponseEntity<User> getById(@PathVariable Long id) {
-        return userService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        User user = userService.findById(id)
+                .orElseThrow(() -> new RuntimeException("ID'ye sahip kullanıcı bulunamadı"));
+        return ResponseEntity.ok(user);
     }
 
     // ✅ Tüm kullanıcıları listele (Admin)
@@ -40,11 +42,9 @@ public class UserController {
     // 🗑️ Kullanıcı sil (Admin)
     @DeleteMapping("/admin/users/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        if (userService.findById(id).isPresent()) {
-            userService.deleteById(id);
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        User user = userService.findById(id)
+                .orElseThrow(() -> new RuntimeException("Silinecek kullanıcı bulunamadı"));
+        userService.deleteById(user.getId());
+        return ResponseEntity.noContent().build();
     }
 }
