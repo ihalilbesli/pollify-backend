@@ -5,6 +5,7 @@ import com.pollify.pollify.servis.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -28,5 +29,22 @@ public class UserController {
         return userService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ✅ Tüm kullanıcıları listele (Admin)
+    @GetMapping("/admin/users")
+    public ResponseEntity<List<User>> getAllUsers() {
+        return ResponseEntity.ok(userService.findAll());
+    }
+
+    // 🗑️ Kullanıcı sil (Admin)
+    @DeleteMapping("/admin/users/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        if (userService.findById(id).isPresent()) {
+            userService.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

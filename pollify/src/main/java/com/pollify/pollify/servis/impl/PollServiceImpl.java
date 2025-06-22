@@ -57,7 +57,6 @@ public class PollServiceImpl implements PollService {
         return pollRepository.findById(id).map(existingPoll -> {
             existingPoll.setTitle(updatedPoll.getTitle());
             existingPoll.setDescription(updatedPoll.getDescription());
-            existingPoll.setExpireAt(updatedPoll.getExpireAt());
             existingPoll.setActive(updatedPoll.isActive());
             existingPoll.setOnlyLoggedUsersCanVote(updatedPoll.isOnlyLoggedUsersCanVote());
 
@@ -110,4 +109,5 @@ public class PollServiceImpl implements PollService {
 
         return pollResultDTO;
     }
+
 }

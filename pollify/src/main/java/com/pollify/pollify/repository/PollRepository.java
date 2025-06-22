@@ -13,4 +13,6 @@ public interface PollRepository extends JpaRepository<Poll, Long> {
     List<Poll> findByActiveTrue();
 
     List<Poll> findByOnlyLoggedUsersCanVoteTrue();
+
+
 }

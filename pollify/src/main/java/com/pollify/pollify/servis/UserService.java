@@ -2,6 +2,7 @@ package com.pollify.pollify.servis;
 
 import com.pollify.pollify.model.User;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserService {
@@ -13,4 +14,7 @@ public interface UserService {
     boolean existsByEmail(String email); // email daha önce kayıtlı mı
 
     Optional<User> findById(Long id); // id ile kullanıcı getir
+
+    List<User> findAll();
+    void deleteById(Long id);
 }

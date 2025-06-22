@@ -24,4 +24,6 @@ public interface PollService {
 
     PollResultDTO getPollResults(Long pollId);
 
+
+
 }

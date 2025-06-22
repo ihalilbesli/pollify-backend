@@ -27,8 +27,6 @@ public class Poll {
 
     private LocalDateTime createdAt;
 
-    private LocalDateTime expireAt;
-
     private boolean active;
 
     private boolean onlyLoggedUsersCanVote;

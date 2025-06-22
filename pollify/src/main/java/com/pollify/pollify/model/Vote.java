@@ -38,13 +38,13 @@ public class Vote {
 
     private LocalDateTime votedAt;
 
-    private String ipAddress; // opsiyonel
+    private String ipAddress;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
     @ToString.Exclude
     @JsonBackReference
-    private User votedBy; // giriş yapılmamışsa null olabilir
+    private User votedBy;
 
     @PrePersist
     public void prePersist() {
