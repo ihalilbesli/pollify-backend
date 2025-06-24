@@ -11,5 +11,4 @@ public class PollifyApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(PollifyApplication.class, args);
 	}
-
 }

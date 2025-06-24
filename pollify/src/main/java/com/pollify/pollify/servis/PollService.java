@@ -1,5 +1,6 @@
 package com.pollify.pollify.servis;
 
+import com.pollify.pollify.dto.DetailedPollResultDTO;
 import com.pollify.pollify.dto.PollResultDTO;
 import com.pollify.pollify.model.Poll;
 import com.pollify.pollify.model.User;
@@ -23,6 +24,9 @@ public interface PollService {
     Optional<Poll> updatePoll(Long id, Poll updatedPoll);
 
     PollResultDTO getPollResults(Long pollId);
+
+    DetailedPollResultDTO getDetailedPollResults(Long pollId);
+
 
 
 

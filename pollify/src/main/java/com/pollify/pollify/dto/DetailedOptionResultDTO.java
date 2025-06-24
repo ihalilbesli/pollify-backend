@@ -1,10 +1,11 @@
 package com.pollify.pollify.dto;
 
 import lombok.*;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class OptionResultDTO {
+public class DetailedOptionResultDTO {
     private Long optionId;
     private String text;
     private int voteCount;

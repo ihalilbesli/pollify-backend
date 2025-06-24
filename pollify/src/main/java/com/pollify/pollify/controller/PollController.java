@@ -1,5 +1,6 @@
 package com.pollify.pollify.controller;
 
+import com.pollify.pollify.dto.DetailedPollResultDTO;
 import com.pollify.pollify.dto.PollResultDTO;
 import com.pollify.pollify.model.Option;
 import com.pollify.pollify.model.Poll;
@@ -103,6 +104,12 @@ public class PollController {
         if (result == null) {
             throw new RuntimeException("Anket sonucu bulunamadı");
         }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{pollId}/detailed-results")
+    public ResponseEntity<DetailedPollResultDTO> getDetailedPollResults(@PathVariable Long pollId) {
+        DetailedPollResultDTO result = pollService.getDetailedPollResults(pollId);
         return ResponseEntity.ok(result);
     }
 }
