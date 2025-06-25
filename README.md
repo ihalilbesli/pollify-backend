@@ -108,3 +108,9 @@ com.pollify.pollify
 └── PollifyApplication → Spring Boot uygulamasının başlangıç noktası (`main` metodu)
 ```
 
+
+Her türlü soru ve geri bildirim için iletişime geçebilirsiniz.  
+📧 **E-posta:** ihalilbesli@gmail.com
+🔗 **LinkedIn:** [linkedin.com/in/ibrahim-halil-beşli-3079ab223](https://www.linkedin.com/in/ibrahim-halil-be%C5%9Fli-3079ab223/)
+
+
